@@ -7,6 +7,7 @@ from typing import Generator
 import zstandard
 from lxml import etree as ET
 
+dctx = zstandard.ZstdDecompressor()
 
 @dataclass(init=False)
 class Doc:
@@ -15,10 +16,9 @@ class Doc:
     abstract: str
 
 
-def wiki(p: [Path,str]) -> Generator[Doc, None, None]:
-    dctx = zstandard.ZstdDecompressor()
-    with open(p, "rb") as fh:
-        for doc in dctx.stream_reader(fh):
+def wiki(path: [Path,str]) -> Generator[Doc, None, None]:
+    with open(path, "rb") as fh:
+        for doc in docs(dctx.stream_reader(fh)):
             yield doc
 
 
