@@ -9,6 +9,7 @@ from lxml import etree as ET
 
 dctx = zstandard.ZstdDecompressor()
 
+
 @dataclass(init=False)
 class Doc:
     title: str
@@ -16,7 +17,7 @@ class Doc:
     abstract: str
 
 
-def wiki(path: [Path,str]) -> Generator[Doc, None, None]:
+def wiki(path: [Path, str]) -> Generator[Doc, None, None]:
     with open(path, "rb") as fh:
         for doc in docs(dctx.stream_reader(fh)):
             yield doc

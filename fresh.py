@@ -44,7 +44,7 @@ if __name__ == "__main__":
     import sys
     from tqdm import tqdm
 
-    parallel = Parallel(n_jobs=n_cores -1, return_as="generator")
+    parallel = Parallel(n_jobs=n_cores - 1, return_as="generator")
 
     output_generator = parallel(
         delayed(doc2locutions)(doc) for doc in wiki(sys.argv[1])
@@ -59,6 +59,6 @@ if __name__ == "__main__":
             buffer = []
 
     tf.update(buffer)
-    with open('locutions.pickle', 'wb') as f:
+    with open("locutions.pickle", "wb") as f:
         pickle.dump(tf, f)
     print(tf.most_common(10))
