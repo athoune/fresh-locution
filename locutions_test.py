@@ -1,15 +1,73 @@
-from tempfile import TemporaryDirectory
-from locutions import Locutions
+from array import array
+from pathlib import Path
+from tempfile import TemporaryDirectory, mkdtemp
+from typing import Iterable
+
+from locutions import OrderedTrie, Locutions, reverse, LocutionsCold, LocutionsHot
 
 
-def test_locutions():
-    with TemporaryDirectory() as tempdir:
-        l = Locutions(tempdir)
-        l.add("je mange des carottes".split(" "))
-        l.add("j'aime les carottes".split(" "))
-        assert 2 == l.get("carottes")
-        assert 1 == l.get("mange")
-        assert 0 == l.get("navet")
-        l.dump()
-        l2 = Locutions(tempdir)
-        assert 2 == l2.get("carottes")
+def test_reverse():
+    src = array("I", [3, 2, 0, 1])
+    assert array("I", [2, 3, 1, 0]) == reverse(src)
+
+
+class tempData:
+    def __init__(self, values: Iterable[str], name: str = "data.txt"):
+        self.temp = TemporaryDirectory()
+        self.path = Path(self.temp.name) / name
+        with open(self.path, "w") as f:
+            f.write("\n".join(values))
+            f.write("\n")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.temp.cleanup()
+
+
+class tempDataLocutions(tempData):
+    def __init__(self, values: list[str]):
+        super().__init__(values, "keys.txt")
+        v = array("I", (1 for i in values))
+        v.tofile((Path(self.temp.name) / "values.bin").open("wb"))
+
+
+def test_orderedTrie():
+    t = OrderedTrie(["je", "mange", "des", "carottes"])
+    assert t["mange"] == 1
+    assert "carottes" in t
+    assert ["je", "mange", "des", "carottes"] == list(t)
+
+
+def test_cold():
+    with tempDataLocutions(["je", "mange", "des", "carottes"]) as data:
+        l = LocutionsCold(data.temp.name)
+        assert "mange" in l
+        assert 4 == len(l)
+
+
+def test_hot():
+    with tempDataLocutions(["je", "mange", "des", "carottes"]) as data:
+        cold = LocutionsCold(data.temp.name)
+        hot = LocutionsHot(cold)
+        assert 2 == hot.ord("des")
+        assert 1 == hot["des"]
+        hot.add(["et", "des", "petits", "pois"])
+        assert 2 == hot["des"]
+        assert ["je", "mange", "des", "carottes", "et", "petits", "pois"] == list(hot)
+        assert 1 == hot.values[2]
+        hot.write()
+        assert 2 == hot.cold.values[2]
+        assert 0 == hot.values[2]
+        values = array("I")
+        values.fromfile((Path(data.temp.name) / "values.bin").open("rb"), 7)
+        assert 2 == values[2]
+        assert (
+            "pois"
+            == (Path(data.temp.name) / "keys.txt").open("r").readlines()[-1].strip()
+        )
+
+
+if __name__ == "__main__":
+    test_hot()
