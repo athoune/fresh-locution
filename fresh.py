@@ -21,11 +21,13 @@ except AttributeError:
 
 
 def ngram(txt: list[str], size: int) -> Generator[list[str], None, None]:
+    "Group tokens as ngrams"
     for i in range(len(txt) - size):
         yield txt[i : i + size]
 
 
 def tokenize(txt: str) -> Generator[list[str], None, None]:
+    "Read a text, cut it by sentences"
     if not isinstance(txt, str):
         return None
     for sentence in seg.segment(txt):
@@ -33,6 +35,7 @@ def tokenize(txt: str) -> Generator[list[str], None, None]:
 
 
 def doc2locutions(doc: Doc) -> list[str]:
+    "Get locutions from a document."
     r = []
     for sentence in tokenize(doc.abstract):
         for n in ngram(sentence, 3):
