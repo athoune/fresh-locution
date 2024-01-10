@@ -1,14 +1,11 @@
 from array import array
 from pathlib import Path
-from tempfile import TemporaryDirectory, mkdtemp
+from tempfile import TemporaryDirectory
 from typing import Iterable
 
-from locutions import OrderedTrie, Locutions, reverse, LocutionsCold, LocutionsHot
+from locutions import  LocutionsCold, LocutionsHot
 
 
-def test_reverse():
-    src = array("I", [3, 2, 0, 1])
-    assert array("I", [2, 3, 1, 0]) == reverse(src)
 
 
 class tempData:
@@ -33,11 +30,6 @@ class tempDataLocutions(tempData):
         v.tofile((Path(self.temp.name) / "values.bin").open("wb"))
 
 
-def test_orderedTrie():
-    t = OrderedTrie(["je", "mange", "des", "carottes"])
-    assert t["mange"] == 1
-    assert "carottes" in t
-    assert ["je", "mange", "des", "carottes"] == list(t)
 
 
 def test_cold():
