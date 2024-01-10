@@ -2,7 +2,7 @@ from array import array
 from collections import defaultdict
 from pathlib import Path
 from struct import pack
-from typing import Generator, Iterable
+from typing import Any, Generator, Iterable, Self
 
 from trie import OrderedTrie
 
@@ -71,16 +71,19 @@ class LocutionsHot:
         self.values = array("I", (0 for i in range(len(cold))))
         self.cold = cold
 
-    def add(self, keys: Iterable[str]):
+    def batch_add(self, keys: Iterable[str]):
         "Add some keys to count."
         for key in keys:
-            try:
-                self.values[self.ord(key)] += 1
-            except KeyError:  # The key doesn't exist yet
-                idx = len(self.values)
-                self.values.append(1)
-                self.dirty_keys[key] = idx
+            self.add(key, 1)
 
+    def add(self, key: str, value: int):
+        try:
+            self.values[self.ord(key)] += value
+        except KeyError:  # The key doesn't exist yet
+            idx = len(self.values)
+            self.values.append(value)
+            self.dirty_keys[key] = idx
+ 
     def __contains__(self, key) -> bool:
         return key in self.cold or key in self.dirty_keys
 
@@ -101,6 +104,10 @@ class LocutionsHot:
             yield k
         for k in self.dirty_keys:
             yield k
+
+    def items(self) -> Generator[tuple[str, int], None, None]:
+        for k in self:
+            yield k, self[k]
 
     def write(self):
         with self.cold.f_keys.open("a") as f:
@@ -124,3 +131,7 @@ class LocutionsHot:
         freshKeys = OrderedTrie(self)
         self.cold.values = fresh
         self.cold._keys = freshKeys
+
+    def merge(self, other: Self):
+        for k, v in other.items():
+            self.add(k, v)

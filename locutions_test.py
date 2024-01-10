@@ -45,7 +45,7 @@ def test_hot():
         hot = LocutionsHot(cold)
         assert 2 == hot.ord("des")
         assert 1 == hot["des"]
-        hot.add(["et", "des", "petits", "pois"])
+        hot.batch_add(["et", "des", "petits", "pois"])
         assert 2 == hot["des"]
         assert ["je", "mange", "des", "carottes", "et", "petits", "pois"] == list(hot)
         assert 1 == hot.values[2]
