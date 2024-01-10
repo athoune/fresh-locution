@@ -2,8 +2,10 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+import gzip
+import sys
 
-from typing import Generator
+from typing import BinaryIO, Generator
 import zstandard
 from lxml import etree as ET
 
@@ -12,18 +14,46 @@ dctx = zstandard.ZstdDecompressor()
 
 @dataclass(init=False)
 class Doc:
+    """
+    Wikipedia abstract document
+
+    * Go to https://dumps.wikimedia.org/enwiki/
+    * Pick a date
+    * Search "Recombine extracted page abstracts for Yahoo"
+    * Download the xml.gz file
+    * Decompress it, recompress with more agressive zstd
+    """
+
     title: str
     url: str
     abstract: str
 
 
-def wiki(path: [Path, str]) -> Generator[Doc, None, None]:
-    with open(path, "rb") as fh:
-        for doc in docs(dctx.stream_reader(fh)):
-            yield doc
+def wiki(path: Path | str) -> Generator[Doc, None, None]:
+    """
+    Read a archive and yield Doc.
+    If path is "-", source is STDIN.
+    File can be compressed with zstd or gzip.
+    """
+    if isinstance(path, str):
+        if path == "-":
+            for d in docs(sys.stdin.buffer):
+                yield d
+            return
+        path = Path(path)
+    if path.suffix == ".zst":
+        with open(path, "rb") as fh:
+            for d in docs(dctx.stream_reader(fh)):
+                yield d
+    elif path.suffix == ".gz":
+        for d in docs(gzip.open(path, mode="rb")):
+            yield d
+    else:
+        for d in docs(path.open(encoding="utf8")):
+            yield d
 
 
-def docs(reader) -> Generator[Doc, None, None]:
+def docs(reader: BinaryIO) -> Generator[Doc, None, None]:
     doc = Doc()
     for event, elem in ET.iterparse(reader):
         if event == "end":
@@ -42,7 +72,6 @@ def docs(reader) -> Generator[Doc, None, None]:
 
 
 if __name__ == "__main__":
-    import sys
     from tqdm import tqdm
 
     reader = wiki(sys.argv[1])
