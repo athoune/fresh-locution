@@ -6,7 +6,7 @@ from marisa_trie import Trie
 
 class KeysReader:
     "Read a file with \\n terminated file"
-    
+
     path: Path
 
     def __init__(self, path: Path | str):
