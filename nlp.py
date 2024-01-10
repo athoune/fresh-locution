@@ -19,3 +19,10 @@ def tokenize(txt: str) -> Generator[list[str], None, None]:
         return None
     for sentence in seg.segment(txt):
         yield SPACE.split(sentence.lower())
+
+
+def locutions(txt: str, size: int) -> Generator[list[str], None, None]:
+    "Yield all ngrams of all sentences of a text."
+    for sentence in tokenize(txt):
+        for n in ngram(sentence, size):
+            yield n
