@@ -54,6 +54,7 @@ def wiki(path: Path | str) -> Generator[Doc, None, None]:
 
 
 def docs(reader: BinaryIO) -> Generator[Doc, None, None]:
+    "Parse Wikipedia abstract's XML format"
     doc = Doc()
     for event, elem in ET.iterparse(reader):
         if event == "end":
