@@ -1,8 +1,9 @@
 from array import array
-from tempfile import TemporaryDirectory
+from itertools import chain
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
-from trie import reverse, OrderedTrie
+from trie import OrderedTrie, reverse
 
 
 def test_reverse():
@@ -35,3 +36,16 @@ poum
         t = OrderedTrie.fromfile(p)
         print(t.trie.keys())
         assert 1 == t["pam"]
+
+
+def test_append():
+    t = OrderedTrie(["pim", "pam", "poum"])
+    assert 0 == t["pim"]
+    assert 1 == t["pam"]
+    assert 3 == len(t)
+    print(list(chain.from_iterable((t, ["Bob"]))))
+    t2 = t.append(["the captain"])
+    assert 4 == len(t2)
+    assert 0 == t2["pim"]
+    assert 1 == t2["pam"]
+    assert 3 == t2["the captain"]

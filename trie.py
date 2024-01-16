@@ -1,6 +1,9 @@
 from array import array
+from collections.abc import Iterator
+from itertools import chain
 from pathlib import Path
-from typing import Generator, Iterable
+from typing import Generator
+
 from marisa_trie import Trie
 
 
@@ -21,6 +24,14 @@ class KeysReader:
                 yield line[:-1]
 
 
+class Loop:
+    def __init__(self, *gens):
+        self.gens = gens
+
+    def __iter__(self):
+        return chain(*self.gens)
+
+
 class OrderedTrie:
     """
     A Trie, built from a list of uniques lines.
@@ -36,7 +47,7 @@ class OrderedTrie:
         o = cls(KeysReader(path))
         return o
 
-    def __init__(self, gen: Iterable[str]):
+    def __init__(self, gen: Iterator[str]):
         self.trie = Trie(gen)
         self.ids = array("I", [0] * len(self.trie))
         for i, line in enumerate(gen):
@@ -50,10 +61,15 @@ class OrderedTrie:
         return key in self.trie
 
     def __len__(self) -> int:
+        assert len(self.trie) == len(self.ids), "OrderedTrie storage out of sync"
         return len(self.trie)
 
     def __iter__(self):
         return (self.trie.restore_key(id_) for id_ in reverse(self.ids))
+
+    def append(self, gen: Iterator[str]):
+        "Return a new OrderedTrie with appended values"
+        return OrderedTrie(Loop(self, gen))
 
 
 def reverse(src: array) -> array:
