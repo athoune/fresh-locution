@@ -3,9 +3,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Iterable
 
-from locutions import  LocutionsCold, LocutionsHot
-
-
+from locutions import Locutions, LocutionsCold, LocutionsHot
 
 
 class tempData:
@@ -43,6 +41,7 @@ def test_hot():
     with tempDataLocutions(["je", "mange", "des", "carottes"]) as data:
         cold = LocutionsCold(data.temp.name)
         hot = LocutionsHot(cold)
+        print(list(hot))
         assert 2 == hot.ord("des")
         assert 1 == hot["des"]
         hot.batch_add(["et", "des", "petits", "pois"])
@@ -54,6 +53,7 @@ def test_hot():
         assert 0 == hot.values[2]
         values = array("I")
         values.fromfile((Path(data.temp.name) / "values.bin").open("rb"), 7)
+        print(values)
         assert 2 == values[2]
         assert (
             "pois"
@@ -61,5 +61,36 @@ def test_hot():
         )
 
 
+def test_write():
+    with TemporaryDirectory() as temp:
+        loc = Locutions(Path(temp) / "test", create=True)
+        loc.batch_add(["je", "mange", "des", "carottes"])
+        assert "des" in loc
+        print(list(loc))
+        loc.write()
+        keys = (Path(temp) / "test/keys.txt").read_text().split("\n")[:-1]
+        assert 4 == len(keys), "keys are written"
+        assert 4*4 == (Path(temp) / "test/values.bin").stat().st_size, "values are written"
+        assert 4 == len(loc.cold.values)
+        assert 4 == len(loc.cold._keys)
+        assert "des" in loc
+        assert 1 == loc["des"]
+
+
+def test_merge():
+    with TemporaryDirectory() as temp:
+        a = Locutions(Path(temp) / "a", create=True)
+        b = Locutions(Path(temp) / "b", create=True)
+        a.batch_add(["je", "mange", "des", "carottes"])
+        assert "des" in a
+        b.batch_add(["et", "des", "petits", "pois"])
+        assert "des" in b
+        a.write()
+        b.write()
+        a.merge(b)
+        a.write()
+        assert 2 == a["des"]
+
+
 if __name__ == "__main__":
-    test_hot()
+    test_write()

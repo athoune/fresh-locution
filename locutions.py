@@ -1,8 +1,8 @@
 from array import array
 from collections import defaultdict
+from itertools import chain
 from pathlib import Path
-from struct import pack
-from typing import Any, Generator, Iterable, Self
+from typing import Generator, Iterable, Self
 
 from trie import OrderedTrie
 
@@ -48,11 +48,11 @@ class LocutionsCold:
         "position of the key, can raise a KeyError"
         return self._keys[key]
 
-    def get(self, key) -> int:
+    def get(self, key, default : int) -> int:
         try:
             idx = self._keys[key]
         except KeyError:
-            return 0
+            return default
         else:
             return self.values[idx]
 
@@ -63,11 +63,11 @@ class LocutionsCold:
 
 class LocutionsHot:
     cold: LocutionsCold
-    dirty_keys: dict
+    new_keys: dict
     values: array("I")
 
     def __init__(self, cold: LocutionsCold):
-        self.dirty_keys = dict()
+        self.new_keys = dict()
         self.values = array("I", (0 for i in range(len(cold))))
         self.cold = cold
 
@@ -78,32 +78,30 @@ class LocutionsHot:
 
     def add(self, key: str, value: int):
         try:
-            self.values[self.ord(key)] += value
+            i = self.ord(key)
+            self.values[i] = self.values[i] + value
         except KeyError:  # The key doesn't exist yet
             idx = len(self.values)
             self.values.append(value)
-            self.dirty_keys[key] = idx
+            self.new_keys[key] = idx
  
     def __contains__(self, key) -> bool:
-        return key in self.cold or key in self.dirty_keys
+        return key in self.cold or key in self.new_keys
 
     def __len__(self) -> int:
         return len(self.values)
 
     def ord(self, key) -> int:
         "position of the key, can raise a KeyError"
-        if key in self.dirty_keys:
-            return self.dirty_keys[key]
+        if key in self.new_keys:
+            return self.new_keys[key]
         return self.cold.ord(key)
 
     def __getitem__(self, key) -> int:
-        return self.cold.get(key) + self.values[self.ord(key)]
+        return self.cold.get(key, 0) + self.values[self.ord(key)]
 
     def __iter__(self) -> Generator[str, None, None]:
-        for k in self.cold:
-            yield k
-        for k in self.dirty_keys:
-            yield k
+        return chain(self.cold, self.new_keys)
 
     def items(self) -> Generator[tuple[str, int], None, None]:
         for k in self:
@@ -111,27 +109,28 @@ class LocutionsHot:
 
     def write(self):
         with self.cold.f_keys.open("a") as f:
-            for token in self.dirty_keys:
+            for token in self.new_keys:
                 f.write(token)
                 f.write("\n")
         with self.cold.f_values.open("wb") as f:
             fresh = array("I", self.cold.values)
-            fresh.extend(self.values)
-            for i, value in enumerate(self.values):
-                if value == 0:
+            for i, v in enumerate(self.values[:len(self.cold.values)]):
+                if v == 0:
                     continue
-                f.seek(i * 4)
-                if i < len(self.cold.values):
-                    fresh[i] += value
-                    value += self.cold.values[i]
-                f.write(pack("I", value))
-
-        self.dirty_keys = dict()
+                fresh[i] += v
+            fresh.extend(self.values[len(self.cold.values):])
+            fresh.tofile(self.cold.f_values.open('wb'))
+        newKeys = OrderedTrie(self)
+        self.new_keys = dict()
         self.values = array("I", (0 for i in range(len(self.values))))
-        freshKeys = OrderedTrie(self)
         self.cold.values = fresh
-        self.cold._keys = freshKeys
+        self.cold._keys = newKeys
 
     def merge(self, other: Self):
         for k, v in other.items():
             self.add(k, v)
+
+
+def Locutions(folder: str | Path, create: bool = False) -> LocutionsHot:
+    cold = LocutionsCold(folder, create)
+    return LocutionsHot(cold)
