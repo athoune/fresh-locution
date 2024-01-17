@@ -1,11 +1,11 @@
 #! /usr/bin/env python
 
-from dataclasses import dataclass
-from pathlib import Path
 import gzip
 import sys
-
+from dataclasses import dataclass
+from pathlib import Path
 from typing import BinaryIO, Generator
+
 import zstandard
 from lxml import etree as ET
 
