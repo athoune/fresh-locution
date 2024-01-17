@@ -48,7 +48,7 @@ class LocutionsCold:
         "position of the key, can raise a KeyError"
         return self._keys[key]
 
-    def get(self, key, default : int) -> int:
+    def get(self, key, default: int) -> int:
         try:
             idx = self._keys[key]
         except KeyError:
@@ -84,7 +84,7 @@ class LocutionsHot:
             idx = len(self.values)
             self.values.append(value)
             self.new_keys[key] = idx
- 
+
     def __contains__(self, key) -> bool:
         return key in self.cold or key in self.new_keys
 
@@ -114,12 +114,12 @@ class LocutionsHot:
                 f.write("\n")
         with self.cold.f_values.open("wb") as f:
             fresh = array("I", self.cold.values)
-            for i, v in enumerate(self.values[:len(self.cold.values)]):
+            for i, v in enumerate(self.values[: len(self.cold.values)]):
                 if v == 0:
                     continue
                 fresh[i] += v
-            fresh.extend(self.values[len(self.cold.values):])
-            fresh.tofile(self.cold.f_values.open('wb'))
+            fresh.extend(self.values[len(self.cold.values) :])
+            fresh.tofile(self.cold.f_values.open("wb"))
         newKeys = OrderedTrie(self)
         self.new_keys = dict()
         self.values = array("I", (0 for i in range(len(self.values))))

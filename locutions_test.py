@@ -28,8 +28,6 @@ class tempDataLocutions(tempData):
         v.tofile((Path(self.temp.name) / "values.bin").open("wb"))
 
 
-
-
 def test_cold():
     with tempDataLocutions(["je", "mange", "des", "carottes"]) as data:
         l = LocutionsCold(data.temp.name)
@@ -70,7 +68,9 @@ def test_write():
         loc.write()
         keys = (Path(temp) / "test/keys.txt").read_text().split("\n")[:-1]
         assert 4 == len(keys), "keys are written"
-        assert 4*4 == (Path(temp) / "test/values.bin").stat().st_size, "values are written"
+        assert (
+            4 * 4 == (Path(temp) / "test/values.bin").stat().st_size
+        ), "values are written"
         assert 4 == len(loc.cold.values)
         assert 4 == len(loc.cold._keys)
         assert "des" in loc
