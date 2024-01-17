@@ -8,7 +8,9 @@ from trie import OrderedTrie
 
 
 class LocutionsCold:
-    values: array
+    "Read only locutions store"
+    tf: array("I")
+    df: array("I")
     _keys: OrderedTrie
 
     def __init__(self, folder: str | Path, create: bool = False):
@@ -19,42 +21,45 @@ class LocutionsCold:
                 raise FileNotFoundError(f"Folder not found {folder}")
             folder.mkdir()
         self.f_keys = folder / "keys.txt"
-        self.f_values = folder / "values.bin"
-        if self.f_keys.exists() != self.f_values.exists():
-            raise FileNotFoundError("We need both keys.txt and values.bien")
-        self.values = array("I")
-        if self.f_values.exists():
-            size = self.f_values.lstat().st_size
-            self.values.fromfile(self.f_values.open("rb"), int(size / 4))  # It's int32
-        self.dirty_keys = defaultdict(int)
+        self.f_tf = folder / "tf.bin"
+        self.f_df = folder / "df.bin"
+        if self.f_keys.exists() != self.f_tf.exists():
+            raise FileNotFoundError("We need both keys.txt and tf.bin")
+        self.tf = array("I")
+        self.df = array("I")
+        if self.f_tf.exists():
+            size = self.f_tf.lstat().st_size
+            self.tf.fromfile(self.f_tf.open("rb"), int(size / 4))  # It's int32
+        if self.f_df.exists():
+            size = self.f_df.lstat().st_size
+            self.df.fromfile(self.f_df.open("rb"), int(size / 4))  # It's int32
         if not self.f_keys.exists():
             self.f_keys.open("wb")
         self._keys = OrderedTrie.fromfile(self.f_keys)
-        self.dirty_keys: int = len(self.values)
-        self.dirty_values: array("b") = array("b", [0] * len(self.values))
 
     def __len__(self) -> int:
-        return len(self.values)
+        return len(self.tf)
 
     def __contains__(self, key) -> bool:
         return key in self._keys
 
-    def __getitem__(self, key) -> int:
+    def __getitem__(self, key) -> tuple[int, int]:
         if key not in self._keys:
             raise KeyError(key)
-        return self.values[self._keys[key]]
+        idx = self._keys[key]
+        return self.tf[idx], self.df[idx]
 
     def ord(self, key) -> int:
         "position of the key, can raise a KeyError"
         return self._keys[key]
 
-    def get(self, key, default: int) -> int:
+    def get(self, key, default: tuple[int, int]) -> tuple[int, int]:
         try:
             idx = self._keys[key]
         except KeyError:
             return default
         else:
-            return self.values[idx]
+            return self.tf[idx], self.df[idx]
 
     def __iter__(self) -> Generator[str, None, None]:
         for k in self._keys:
@@ -62,75 +67,99 @@ class LocutionsCold:
 
 
 class LocutionsHot:
+    "Append only locutions store"
     cold: LocutionsCold
-    new_keys: dict
-    values: array("I")
+    new_words: dict
+    tf: array("I")
+    df: array("I")
 
     def __init__(self, cold: LocutionsCold):
-        self.new_keys = dict()
-        self.values = array("I", (0 for i in range(len(cold))))
+        self.new_words = dict()
+        self.tf = array("I", (0 for i in range(len(cold))))
+        self.df = array("I", (0 for i in range(len(cold))))
         self.cold = cold
 
-    def batch_add(self, keys: Iterable[str]):
-        "Add some keys to count."
-        for key in keys:
-            self.add(key, 1)
+    def add_document(self, words: Iterable[str]):
+        "Add a document for word counting."
+        df = set()
+        for word in words:
+            self._add(word, 1)
+            df.add(word)
+        for word in df:
+            i = self.ord(word)
+            self.df[i] += 1
 
-    def add(self, key: str, value: int):
+    def _add(self, key: str, value: int):
         try:
             i = self.ord(key)
-            self.values[i] = self.values[i] + value
+            self.tf[i] = self.tf[i] + value
         except KeyError:  # The key doesn't exist yet
-            idx = len(self.values)
-            self.values.append(value)
-            self.new_keys[key] = idx
+            idx = len(self.tf)
+            self.tf.append(value)
+            self.df.append(0) # lets prepare the df array
+            self.new_words[key] = idx
 
-    def __contains__(self, key) -> bool:
-        return key in self.cold or key in self.new_keys
+    def __contains__(self, word) -> bool:
+        return word in self.cold or word in self.new_words
 
     def __len__(self) -> int:
-        return len(self.values)
+        return len(self.tf)
 
     def ord(self, key) -> int:
         "position of the key, can raise a KeyError"
-        if key in self.new_keys:
-            return self.new_keys[key]
+        if key in self.new_words:
+            return self.new_words[key]
         return self.cold.ord(key)
 
-    def __getitem__(self, key) -> int:
-        return self.cold.get(key, 0) + self.values[self.ord(key)]
+    def __getitem__(self, word) -> tuple[int, int]:
+        tf, df = self.cold.get(word, (0,0))
+        idx = self.ord(word)
+        return (tf+ self.tf[idx], df + self.df[idx])
 
     def __iter__(self) -> Generator[str, None, None]:
-        return chain(self.cold, self.new_keys)
+        return chain(self.cold, self.new_words)
 
-    def items(self) -> Generator[tuple[str, int], None, None]:
+    def items(self) -> Generator[tuple[str, tuple[int, int]], None, None]:
         for k in self:
             yield k, self[k]
 
     def write(self):
         with self.cold.f_keys.open("a") as f:
-            for token in self.new_keys:
+            for token in self.new_words:
                 f.write(token)
                 f.write("\n")
-        with self.cold.f_values.open("wb") as f:
-            fresh = array("I", self.cold.values)
-            for i, v in enumerate(self.values[: len(self.cold.values)]):
+        with self.cold.f_tf.open("wb") as f:
+            fresh_tf = array("I", self.cold.tf)
+            for i, v in enumerate(self.tf[: len(self.cold.tf)]):
                 if v == 0:
                     continue
-                fresh[i] += v
-            fresh.extend(self.values[len(self.cold.values) :])
-            fresh.tofile(self.cold.f_values.open("wb"))
-        newKeys = OrderedTrie(self)
-        self.new_keys = dict()
-        self.values = array("I", (0 for i in range(len(self.values))))
-        self.cold.values = fresh
-        self.cold._keys = newKeys
+                fresh_tf[i] += v
+            fresh_tf.extend(self.tf[len(self.cold.tf) :])
+            fresh_tf.tofile(self.cold.f_tf.open("wb"))
+        with self.cold.f_df.open("wb") as f:
+            fresh_df = array("I", self.cold.df)
+            for i, v in enumerate(self.df[: len(self.cold.df)]):
+                if v == 0:
+                    continue
+                fresh_df[i] += v
+            fresh_df.extend(self.df[len(self.cold.df) :])
+            fresh_df.tofile(self.cold.f_df.open("wb"))
+        new_keys = OrderedTrie(self)
+        self.new_words = dict()
+        self.tf = array("I", (0 for i in range(len(self.tf))))
+        self.cold.tf = fresh_tf
+        self.df = array("I", (0 for i in range(len(self.df))))
+        self.cold.df = fresh_df
+        self.cold._keys = new_keys
 
     def merge(self, other: Self):
         for k, v in other.items():
-            self.add(k, v)
+            tf, df = v
+            self._add(k, tf)
+            self.df[self.ord(k)] += df
 
 
 def Locutions(folder: str | Path, create: bool = False) -> LocutionsHot:
+    "Locutions store"
     cold = LocutionsCold(folder, create)
     return LocutionsHot(cold)

@@ -25,7 +25,8 @@ class tempDataLocutions(tempData):
     def __init__(self, values: list[str]):
         super().__init__(values, "keys.txt")
         v = array("I", (1 for i in values))
-        v.tofile((Path(self.temp.name) / "values.bin").open("wb"))
+        v.tofile((Path(self.temp.name) / "tf.bin").open("wb"))
+        v.tofile((Path(self.temp.name) / "df.bin").open("wb"))
 
 
 def test_cold():
@@ -33,6 +34,7 @@ def test_cold():
         l = LocutionsCold(data.temp.name)
         assert "mange" in l
         assert 4 == len(l)
+        assert (1,1) == l["mange"]
 
 
 def test_hot():
@@ -41,18 +43,19 @@ def test_hot():
         hot = LocutionsHot(cold)
         print(list(hot))
         assert 2 == hot.ord("des")
-        assert 1 == hot["des"]
-        hot.batch_add(["et", "des", "petits", "pois"])
-        assert 2 == hot["des"]
-        assert ["je", "mange", "des", "carottes", "et", "petits", "pois"] == list(hot)
-        assert 1 == hot.values[2]
+        assert (1, 1) == hot["des"]
+        hot.add_document(["des", "patates", "et", "des", "petits", "pois"])
+        assert (3, 2) == hot["des"]
+        assert ["je", "mange", "des", "carottes", "patates", "et", "petits", "pois"] == list(hot)
+        assert 1 == cold.tf[2]
+        assert 2 == hot.tf[2]
         hot.write()
-        assert 2 == hot.cold.values[2]
-        assert 0 == hot.values[2]
+        assert 3 == hot.cold.tf[2]
+        assert 0 == hot.tf[2]
         values = array("I")
-        values.fromfile((Path(data.temp.name) / "values.bin").open("rb"), 7)
+        values.fromfile((Path(data.temp.name) / "tf.bin").open("rb"), 7)
         print(values)
-        assert 2 == values[2]
+        assert 3 == values[2]
         assert (
             "pois"
             == (Path(data.temp.name) / "keys.txt").open("r").readlines()[-1].strip()
@@ -62,34 +65,34 @@ def test_hot():
 def test_write():
     with TemporaryDirectory() as temp:
         loc = Locutions(Path(temp) / "test", create=True)
-        loc.batch_add(["je", "mange", "des", "carottes"])
+        loc.add_document(["je", "mange", "des", "carottes"])
         assert "des" in loc
         print(list(loc))
         loc.write()
         keys = (Path(temp) / "test/keys.txt").read_text().split("\n")[:-1]
         assert 4 == len(keys), "keys are written"
         assert (
-            4 * 4 == (Path(temp) / "test/values.bin").stat().st_size
+            4 * 4 == (Path(temp) / "test/tf.bin").stat().st_size
         ), "values are written"
-        assert 4 == len(loc.cold.values)
+        assert 4 == len(loc.cold.tf)
         assert 4 == len(loc.cold._keys)
         assert "des" in loc
-        assert 1 == loc["des"]
+        assert (1, 1) == loc["des"]
 
 
 def test_merge():
     with TemporaryDirectory() as temp:
         a = Locutions(Path(temp) / "a", create=True)
         b = Locutions(Path(temp) / "b", create=True)
-        a.batch_add(["je", "mange", "des", "carottes"])
+        a.add_document(["je", "mange", "des", "carottes"])
         assert "des" in a
-        b.batch_add(["et", "des", "petits", "pois"])
+        b.add_document(["et", "des", "petits", "pois"])
         assert "des" in b
         a.write()
         b.write()
         a.merge(b)
         a.write()
-        assert 2 == a["des"]
+        assert (2, 2) == a["des"]
 
 
 if __name__ == "__main__":
