@@ -1,5 +1,6 @@
 from array import array
 from pathlib import Path
+import struct
 from tempfile import TemporaryDirectory
 from typing import Iterable
 
@@ -7,7 +8,7 @@ from locutions import Locutions, LocutionsCold, LocutionsHot
 
 
 class tempData:
-    def __init__(self, values: Iterable[str], name: str = "data.txt"):
+    def __init__(self, values: Iterable[str], name: str = "keys.txt"):
         self.temp = TemporaryDirectory()
         self.path = Path(self.temp.name) / name
         with open(self.path, "w") as f:
@@ -27,6 +28,7 @@ class tempDataLocutions(tempData):
         v = array("I", (1 for i in values))
         v.tofile((Path(self.temp.name) / "tf.bin").open("wb"))
         v.tofile((Path(self.temp.name) / "df.bin").open("wb"))
+        (Path(self.temp.name) / "total.bin").write_bytes(struct.pack('I', 1))
 
 
 def test_cold():
@@ -40,6 +42,7 @@ def test_cold():
 def test_hot():
     with tempDataLocutions(["je", "mange", "des", "carottes"]) as data:
         cold = LocutionsCold(data.temp.name)
+        assert 1 == cold._total
         hot = LocutionsHot(cold)
         print(list(hot))
         assert 2 == hot.ord("des")
@@ -49,6 +52,7 @@ def test_hot():
         assert ["je", "mange", "des", "carottes", "patates", "et", "petits", "pois"] == list(hot)
         assert 1 == cold.tf[2]
         assert 2 == hot.tf[2]
+        assert 2 == hot.total()
         hot.write()
         assert 3 == hot.cold.tf[2]
         assert 0 == hot.tf[2]

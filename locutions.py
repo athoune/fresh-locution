@@ -1,7 +1,7 @@
 from array import array
-from collections import defaultdict
 from itertools import chain
 from pathlib import Path
+import struct
 from typing import Generator, Iterable, Self
 
 from trie import OrderedTrie
@@ -11,6 +11,7 @@ class LocutionsCold:
     "Read only locutions store"
     tf: array("I")
     df: array("I")
+    _total: int
     _keys: OrderedTrie
 
     def __init__(self, folder: str | Path, create: bool = False):
@@ -23,8 +24,10 @@ class LocutionsCold:
         self.f_keys = folder / "keys.txt"
         self.f_tf = folder / "tf.bin"
         self.f_df = folder / "df.bin"
-        if self.f_keys.exists() != self.f_tf.exists():
-            raise FileNotFoundError("We need both keys.txt and tf.bin")
+        self.f_total = folder / "total.bin"
+        if not (self.f_keys.exists() == self.f_tf.exists()
+                == self.f_df.exists() == self.f_total.exists()):
+            raise FileNotFoundError("We need both keys.txt, tf.bin, df.bin & total.bin")
         self.tf = array("I")
         self.df = array("I")
         if self.f_tf.exists():
@@ -36,6 +39,10 @@ class LocutionsCold:
         if not self.f_keys.exists():
             self.f_keys.open("wb")
         self._keys = OrderedTrie.fromfile(self.f_keys)
+        if self.f_total.exists():
+            self._total = struct.unpack('I', self.f_total.read_bytes())[0]
+        else:
+            self._total = 0
 
     def __len__(self) -> int:
         return len(self.tf)
@@ -72,12 +79,14 @@ class LocutionsHot:
     new_words: dict
     tf: array("I")
     df: array("I")
+    _total: int
 
     def __init__(self, cold: LocutionsCold):
         self.new_words = dict()
         self.tf = array("I", (0 for i in range(len(cold))))
         self.df = array("I", (0 for i in range(len(cold))))
         self.cold = cold
+        self._total = 0
 
     def add_document(self, words: Iterable[str]):
         "Add a document for word counting."
@@ -88,6 +97,7 @@ class LocutionsHot:
         for word in df:
             i = self.ord(word)
             self.df[i] += 1
+        self._total += 1
 
     def _add(self, key: str, value: int):
         try:
@@ -123,6 +133,9 @@ class LocutionsHot:
         for k in self:
             yield k, self[k]
 
+    def total(self) -> int:
+        return self.cold._total + self._total
+
     def write(self):
         with self.cold.f_keys.open("a") as f:
             for token in self.new_words:
@@ -151,6 +164,8 @@ class LocutionsHot:
         self.df = array("I", (0 for i in range(len(self.df))))
         self.cold.df = fresh_df
         self.cold._keys = new_keys
+        self.cold.f_total.write_bytes(struct.pack('I', self.total()))
+        self._total = 0
 
     def merge(self, other: Self):
         for k, v in other.items():
