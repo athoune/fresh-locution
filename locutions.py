@@ -25,8 +25,12 @@ class LocutionsCold:
         self.f_tf = folder / "tf.bin"
         self.f_df = folder / "df.bin"
         self.f_total = folder / "total.bin"
-        if not (self.f_keys.exists() == self.f_tf.exists()
-                == self.f_df.exists() == self.f_total.exists()):
+        if not (
+            self.f_keys.exists()
+            == self.f_tf.exists()
+            == self.f_df.exists()
+            == self.f_total.exists()
+        ):
             raise FileNotFoundError("We need both keys.txt, tf.bin, df.bin & total.bin")
         self.tf = array("I")
         self.df = array("I")
@@ -40,7 +44,7 @@ class LocutionsCold:
             self.f_keys.open("wb")
         self._keys = OrderedTrie.fromfile(self.f_keys)
         if self.f_total.exists():
-            self._total = struct.unpack('I', self.f_total.read_bytes())[0]
+            self._total = struct.unpack("I", self.f_total.read_bytes())[0]
         else:
             self._total = 0
 
@@ -106,7 +110,7 @@ class LocutionsHot:
         except KeyError:  # The key doesn't exist yet
             idx = len(self.tf)
             self.tf.append(value)
-            self.df.append(0) # lets prepare the df array
+            self.df.append(0)  # lets prepare the df array
             self.new_words[key] = idx
 
     def __contains__(self, word) -> bool:
@@ -122,9 +126,9 @@ class LocutionsHot:
         return self.cold.ord(key)
 
     def __getitem__(self, word) -> tuple[int, int]:
-        tf, df = self.cold.get(word, (0,0))
+        tf, df = self.cold.get(word, (0, 0))
         idx = self.ord(word)
-        return (tf+ self.tf[idx], df + self.df[idx])
+        return (tf + self.tf[idx], df + self.df[idx])
 
     def __iter__(self) -> Generator[str, None, None]:
         return chain(self.cold, self.new_words)
@@ -164,7 +168,7 @@ class LocutionsHot:
         self.df = array("I", (0 for i in range(len(self.df))))
         self.cold.df = fresh_df
         self.cold._keys = new_keys
-        self.cold.f_total.write_bytes(struct.pack('I', self.total()))
+        self.cold.f_total.write_bytes(struct.pack("I", self.total()))
         self._total = 0
 
     def merge(self, other: Self):

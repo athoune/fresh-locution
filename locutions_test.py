@@ -28,7 +28,7 @@ class tempDataLocutions(tempData):
         v = array("I", (1 for i in values))
         v.tofile((Path(self.temp.name) / "tf.bin").open("wb"))
         v.tofile((Path(self.temp.name) / "df.bin").open("wb"))
-        (Path(self.temp.name) / "total.bin").write_bytes(struct.pack('I', 1))
+        (Path(self.temp.name) / "total.bin").write_bytes(struct.pack("I", 1))
 
 
 def test_cold():
@@ -36,7 +36,7 @@ def test_cold():
         l = LocutionsCold(data.temp.name)
         assert "mange" in l
         assert 4 == len(l)
-        assert (1,1) == l["mange"]
+        assert (1, 1) == l["mange"]
 
 
 def test_hot():
@@ -49,7 +49,16 @@ def test_hot():
         assert (1, 1) == hot["des"]
         hot.add_document(["des", "patates", "et", "des", "petits", "pois"])
         assert (3, 2) == hot["des"]
-        assert ["je", "mange", "des", "carottes", "patates", "et", "petits", "pois"] == list(hot)
+        assert [
+            "je",
+            "mange",
+            "des",
+            "carottes",
+            "patates",
+            "et",
+            "petits",
+            "pois",
+        ] == list(hot)
         assert 1 == cold.tf[2]
         assert 2 == hot.tf[2]
         assert 2 == hot.total()
