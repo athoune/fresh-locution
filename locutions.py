@@ -1,4 +1,5 @@
 from array import array
+from collections import Counter
 from itertools import chain
 from pathlib import Path
 import struct
@@ -103,15 +104,24 @@ class LocutionsHot:
             self.df[i] += 1
         self._total += 1
 
-    def _add(self, key: str, value: int):
+    def add_counter(self, words: Counter):
+        "Add a Counter of words"
+        for word, n in words.items():
+            i = self._add(word, n)
+            self.df[i] += 1
+        self._total += 1
+
+    def _add(self, key: str, value: int) -> int:
         try:
             i = self.ord(key)
             self.tf[i] = self.tf[i] + value
+            return i
         except KeyError:  # The key doesn't exist yet
             idx = len(self.tf)
             self.tf.append(value)
             self.df.append(0)  # lets prepare the df array
             self.new_words[key] = idx
+            return idx
 
     def __contains__(self, word) -> bool:
         return word in self.cold or word in self.new_words

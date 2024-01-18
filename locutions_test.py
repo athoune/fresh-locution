@@ -1,4 +1,5 @@
 from array import array
+from collections import Counter
 from pathlib import Path
 import struct
 from tempfile import TemporaryDirectory
@@ -91,6 +92,14 @@ def test_write():
         assert 4 == len(loc.cold._keys)
         assert "des" in loc
         assert (1, 1) == loc["des"]
+
+
+def test_counter():
+    with TemporaryDirectory() as temp:
+        loc = Locutions(Path(temp) / "test", create=True)
+        loc.add_counter(Counter(["je", "mange", "des", "carottes"]))
+        assert 1 == loc.ord("mange")
+        assert 4 == len(loc)
 
 
 def test_merge():
