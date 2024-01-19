@@ -3,7 +3,7 @@ name = "fresh-locution"
 version = "0.1.0"
 description = "Extract fresh locutions from horodated feeds"
 authors = ["Mathieu Lecarme <mathieu@garambrogne.net>"]
-license = "MIT"
+license = "3 terms BSD license"
 readme = "README.md"
 
 [tool.poetry.dependencies]
