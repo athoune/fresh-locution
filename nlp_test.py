@@ -6,7 +6,7 @@ def test_ngram():
     n = list(ngram(txt.split(" "), 3))
     assert ["Albedo", "is", "the"] == n[0]
     assert ["is", "the", "fraction"] == n[1]
-    
+
 
 def test_tokenize():
     txt = """
