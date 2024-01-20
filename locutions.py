@@ -66,7 +66,7 @@ class LocutionsCold:
         "position of the key, can raise a KeyError"
         return self._keys[key]
 
-    def get(self, key, default: tuple[int, int]) -> tuple[int, int]:
+    def get(self, key: str, default: tuple[int, int]) -> tuple[int, int]:
         try:
             idx = self._keys[key]
         except KeyError:
