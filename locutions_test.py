@@ -5,7 +5,7 @@ import struct
 from tempfile import TemporaryDirectory
 from typing import Iterable
 
-from locutions import Locutions, LocutionsCold, LocutionsHot
+from locutions import Locutions, LocutionsCold
 
 
 class tempData:
@@ -42,10 +42,7 @@ def test_cold():
 
 def test_hot():
     with tempDataLocutions(["je", "mange", "des", "carottes"]) as data:
-        cold = LocutionsCold(data.temp.name)
-        assert 1 == cold._total
-        hot = LocutionsHot(cold)
-        print(list(hot))
+        hot = Locutions(data.temp.name)
         assert 2 == hot.ord("des")
         assert (1, 1) == hot["des"]
         hot.add_document(["des", "patates", "et", "des", "petits", "pois"])
@@ -60,12 +57,12 @@ def test_hot():
             "petits",
             "pois",
         ] == list(hot)
-        assert 1 == cold.tf[2]
-        assert 2 == hot.tf[2]
+        assert 1 == hot.tf[2]
+        assert 2 == hot.new_tf[2]
         assert 2 == hot.total()
         hot.write()
-        assert 3 == hot.cold.tf[2]
-        assert 0 == hot.tf[2]
+        assert 3 == hot.tf[2]
+        assert 0 == hot.new_tf[2]
         values = array("I")
         values.fromfile((Path(data.temp.name) / "tf.bin").open("rb"), 7)
         print(values)
@@ -88,8 +85,8 @@ def test_write():
         assert (
             4 * 4 == (Path(temp) / "test/tf.bin").stat().st_size
         ), "values are written"
-        assert 4 == len(loc.cold.tf)
-        assert 4 == len(loc.cold._keys)
+        assert 4 == len(loc.tf)
+        assert 4 == len(loc._keys)
         assert "des" in loc
         assert (1, 1) == loc["des"]
 

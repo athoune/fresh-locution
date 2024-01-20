@@ -78,20 +78,19 @@ class LocutionsCold:
             yield k
 
 
-class LocutionsHot:
+class Locutions(LocutionsCold):
     "Append only locutions store"
-    cold: LocutionsCold
     new_words: dict
-    tf: array("I")
-    df: array("I")
-    _total: int
+    new_tf: array("I")
+    new_df: array("I")
+    _new_total: int
 
-    def __init__(self, cold: LocutionsCold):
+    def __init__(self, folder: str | Path, create: bool = False):
+        super().__init__(folder, create)
         self.new_words = dict()
-        self.tf = array("I", (0 for i in range(len(cold))))
-        self.df = array("I", (0 for i in range(len(cold))))
-        self.cold = cold
-        self._total = 0
+        self.new_tf = array("I", (0 for i in range(len(self.tf))))
+        self.new_df = array("I", (0 for i in range(len(self.tf))))
+        self._new_total = 0
 
     def add_document(self, words: Iterable[str]):
         "Add a document for word counting."
@@ -101,94 +100,90 @@ class LocutionsHot:
             df.add(word)
         for word in df:
             i = self.ord(word)
-            self.df[i] += 1
+            self.new_df[i] += 1
         self._total += 1
 
     def add_counter(self, words: Counter):
         "Add a Counter of words"
         for word, n in words.items():
             i = self._add(word, n)
-            self.df[i] += 1
-        self._total += 1
+            self.new_df[i] += 1
+        self._new_total += 1
 
     def _add(self, key: str, value: int) -> int:
         try:
             i = self.ord(key)
-            self.tf[i] = self.tf[i] + value
+            self.new_tf[i] = self.new_tf[i] + value
             return i
         except KeyError:  # The key doesn't exist yet
-            idx = len(self.tf)
-            self.tf.append(value)
-            self.df.append(0)  # lets prepare the df array
+            idx = len(self.new_tf)
+            self.new_tf.append(value)
+            self.new_df.append(0)  # lets prepare the df array
             self.new_words[key] = idx
             return idx
 
     def __contains__(self, word) -> bool:
-        return word in self.cold or word in self.new_words
+        return word in self._keys or word in self.new_words
 
     def __len__(self) -> int:
-        return len(self.tf)
+        return len(self.new_tf)
 
     def ord(self, key) -> int:
         "position of the key, can raise a KeyError"
         if key in self.new_words:
             return self.new_words[key]
-        return self.cold.ord(key)
+        return super().ord(key)
 
     def __getitem__(self, word) -> tuple[int, int]:
-        tf, df = self.cold.get(word, (0, 0))
+        tf, df = super().get(word, (0, 0))
         idx = self.ord(word)
-        return (tf + self.tf[idx], df + self.df[idx])
+        return (tf + self.new_tf[idx], df + self.new_df[idx])
 
     def __iter__(self) -> Generator[str, None, None]:
-        return chain(self.cold, self.new_words)
+        return chain(self._keys, self.new_words)
 
     def items(self) -> Generator[tuple[str, tuple[int, int]], None, None]:
         for k in self:
             yield k, self[k]
 
     def total(self) -> int:
-        return self.cold._total + self._total
+        return self._total + self._new_total
 
     def write(self):
-        with self.cold.f_keys.open("a") as f:
+        with self.f_keys.open("a") as f:
             for token in self.new_words:
                 f.write(token)
                 f.write("\n")
-        with self.cold.f_tf.open("wb") as f:
-            fresh_tf = array("I", self.cold.tf)
-            for i, v in enumerate(self.tf[: len(self.cold.tf)]):
+        with self.f_tf.open("wb") as f:
+            fresh_tf = array("I", self.tf)
+            for i, v in enumerate(self.new_tf[: len(self.tf)]):
                 if v == 0:
                     continue
                 fresh_tf[i] += v
-            fresh_tf.extend(self.tf[len(self.cold.tf) :])
-            fresh_tf.tofile(self.cold.f_tf.open("wb"))
-        with self.cold.f_df.open("wb") as f:
-            fresh_df = array("I", self.cold.df)
-            for i, v in enumerate(self.df[: len(self.cold.df)]):
+            fresh_tf.extend(self.new_tf[len(self.tf) :])
+            fresh_tf.tofile(self.f_tf.open("wb"))
+        with self.f_df.open("wb") as f:
+            fresh_df = array("I", self.df)
+            for i, v in enumerate(self.new_df[: len(self.df)]):
                 if v == 0:
                     continue
                 fresh_df[i] += v
-            fresh_df.extend(self.df[len(self.cold.df) :])
-            fresh_df.tofile(self.cold.f_df.open("wb"))
+            fresh_df.extend(self.new_df[len(self.df) :])
+            fresh_df.tofile(self.f_df.open("wb"))
         new_keys = OrderedTrie(self)
         self.new_words = dict()
-        self.tf = array("I", (0 for i in range(len(self.tf))))
-        self.cold.tf = fresh_tf
-        self.df = array("I", (0 for i in range(len(self.df))))
-        self.cold.df = fresh_df
-        self.cold._keys = new_keys
-        self.cold.f_total.write_bytes(struct.pack("I", self.total()))
-        self._total = 0
+        self.new_tf = array("I", (0 for i in range(len(self.new_tf))))
+        self.tf = fresh_tf
+        self.new_df = array("I", (0 for i in range(len(self.new_df))))
+        self.df = fresh_df
+        self._keys = new_keys
+        total = self.total()
+        self.f_total.write_bytes(struct.pack("I", total))
+        self._new_total = 0
+        self._total = total
 
     def merge(self, other: Self):
         for k, v in other.items():
             tf, df = v
             self._add(k, tf)
-            self.df[self.ord(k)] += df
-
-
-def Locutions(folder: str | Path, create: bool = False) -> LocutionsHot:
-    "Locutions store"
-    cold = LocutionsCold(folder, create)
-    return LocutionsHot(cold)
+            self.new_df[self.ord(k)] += df
