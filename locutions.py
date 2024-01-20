@@ -1,6 +1,7 @@
 from array import array
 from collections import Counter
 from itertools import chain
+import math
 from pathlib import Path
 import struct
 from typing import Generator, Iterable, Self
@@ -77,6 +78,12 @@ class LocutionsCold:
         for k in self._keys:
             yield k
 
+    def total(self) -> int:
+        return self._total
+
+    def tf_idf(self, key: str) -> float:
+        tf, df = self[key]
+        return tf * math.log(float(self.total()) / df)
 
 class Locutions(LocutionsCold):
     "Append only locutions store"

@@ -114,5 +114,17 @@ def test_merge():
         assert (2, 2) == a["des"]
 
 
+def test_tf_idf():
+    with TemporaryDirectory() as temp:
+        loc = Locutions(Path(temp) / "test", create=True)
+        loc.add_document(["je", "mange", "des", "carottes"])
+        loc.write()
+        loc.add_document(["et", "des", "petits", "pois"])
+        assert 2 == loc.total()
+        assert "des" in loc
+        tf_idf = loc.tf_idf("carottes")
+        assert 0.0 < tf_idf < 1.0
+
+
 if __name__ == "__main__":
     test_write()
