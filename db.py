@@ -1,3 +1,4 @@
+import math
 import struct
 from array import array
 from collections import Counter
@@ -10,6 +11,7 @@ class Db:
     keys: plyvel.DB
     tf: array("I")
     df: array("I")
+    n_docs: int
     size: int
 
     def __init__(self, path: str | Path) -> None:
@@ -18,20 +20,23 @@ class Db:
         exist = (path / "db").exists()
         self.f_tf = path / "tf"
         self.f_df = path / "df"
+        self.f_n_docs = path / "docs"
         self.keys = plyvel.DB(str(path / "db"), create_if_missing=True)
         self.tf = array("I")
         self.df = array("I")
         self.size = 0
+        self.n_docs = 0
         if exist:
             self.size = self.f_df.lstat().st_size / 4
             self.tf.fromfile(self.f_tf.open("rb"), self.size)
             self.df.fromfile(self.f_df.open("rb"), self.size)
+            self.n_docs = struct.unpack("I", self.f_n_docs.read_bytes())[0]
 
     def add_doc(self, document: Counter) -> int:
         wb = self.keys.write_batch()
         fresh = 0
         for k, v in document.items():
-            k = k.encode('utf8')
+            k = k.encode("utf8")
             pos = self.keys.get(k)
             if pos is None:
                 wb.put(k, struct.pack("I", self.size))
@@ -44,8 +49,19 @@ class Db:
                 self.tf[n] += v
                 self.df[n] += 1
         wb.write()
+        self.n_docs += 1
         return fresh
 
     def write(self) -> None:
-        self.df.tofile(self.f_df.open('wb'))
-        self.tf.tofile(self.f_tf.open('wb'))
+        self.df.tofile(self.f_df.open("wb"))
+        self.tf.tofile(self.f_tf.open("wb"))
+        self.f_n_docs.open("wb").write(struct.pack("I", self.n_docs))
+
+    def tf_idf(self, key: str) -> float:
+        pos = self.keys.get(key.encode("utf8"))
+        if pos is None:
+            return 0
+        pos = struct.unpack("I", pos)[0]
+        tf = self.tf[pos]
+        df = self.df[pos]
+        return tf * math.log(float(self.n_docs) / df)
