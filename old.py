@@ -1,15 +1,18 @@
 #! /usr/bin/env python3 -u
+"""
+Build the db of old locutions.
+"""
 
 import os
 from collections import Counter
 from pathlib import Path
 from typing import Generator
 
+from datasets import load_dataset
 from joblib import Parallel, delayed
 
 from locutions import Locutions
 from nlp import locutions
-from wiki_abstract import Doc, wiki
 
 n_cores: int
 try:
@@ -18,29 +21,16 @@ except AttributeError:
     n_cores = os.cpu_count()
 
 
-def doc2locutions(doc: Doc) -> Generator[str, None, None]:
+def doc2locutions(txt: str) -> Generator[str, None, None]:
     "Get locutions from a document."
-    for ngrams in locutions(doc.abstract, 3):
+    for ngrams in locutions(txt, 3):
         yield " ".join(ngrams)
 
 
-def count_doc(doc: Doc, ngram_size: int = 3) -> Counter:
+def count_doc(txt: str, ngram_size: int = 3) -> Counter:
     "Count all ngrams in a doc"
     # locutions return a list of ngrams, list[str], lets rebuild a short sentences for counting purpose
-    return Counter(" ".join(l) for l in locutions(doc.abstract, ngram_size))
-
-
-def count_wiki_abstract(
-    path: Path, ngram_size: int = 3, n_jobs: int = 0
-) -> Generator[Counter, None, None]:
-    if n_jobs == 0:  # 0 means max
-        n_jobs = n_cores - 1
-    parallel = Parallel(n_jobs=n_jobs, return_as="generator")
-    output_generator = parallel(
-        delayed(count_doc)(doc, ngram_size) for doc in wiki(path)
-    )
-    for c in output_generator:
-        yield c
+    return Counter(" ".join(l) for l in locutions(txt, ngram_size))
 
 
 def fresh(loc: Locutions, sentence: str):
@@ -53,8 +43,19 @@ def fresh(loc: Locutions, sentence: str):
         print(score, ll)
 
 
+def count_wiki_datasets(ngram_size: int = 3, n_jobs: int = 0) -> Generator[Counter, None, None]:
+    datas = load_dataset("wikipedia", "20220301.en")['train']
+    if n_jobs == 0:  # 0 means max
+        n_jobs = n_cores - 1
+    parallel = Parallel(n_jobs=n_jobs, return_as="generator")
+    output_generator = parallel(
+        delayed(count_doc)(doc['text'], ngram_size) for doc in datas
+    )
+    for c in output_generator:
+        yield c
+
+
 if __name__ == "__main__":
-    import sys
 
     from tqdm import tqdm
 
@@ -64,6 +65,10 @@ if __name__ == "__main__":
 
     loc = Locutions(target, create=True)
 
+<<<<<<< HEAD:fresh.py
     for count in tqdm(count_wiki_abstract(sys.argv[1], ngram_size=2), unit=" docs"):
+=======
+    for count in tqdm(count_wiki_datasets(ngram_size=2), unit=" docs"):
+>>>>>>> 08aff58 (feat: index plain text, not a model.):old.py
         loc.add_counter(count)
     loc.write()
