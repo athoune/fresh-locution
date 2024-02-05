@@ -43,6 +43,16 @@ def count_wiki_abstract(
         yield c
 
 
+def fresh(loc: Locutions, sentence: str):
+    for l in locutions(sentence, 2):
+        ll = " ".join(l)
+        if ll not in loc:
+            print("! ", ll)
+            continue
+        score = loc.tf_idf(ll)
+        print(score, ll)
+
+
 if __name__ == "__main__":
     import sys
 
@@ -54,6 +64,6 @@ if __name__ == "__main__":
 
     loc = Locutions(target, create=True)
 
-    for count in tqdm(count_wiki_abstract(sys.argv[1]), unit=" docs"):
+    for count in tqdm(count_wiki_abstract(sys.argv[1], ngram_size=2), unit=" docs"):
         loc.add_counter(count)
     loc.write()
