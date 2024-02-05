@@ -1,6 +1,6 @@
 from io import BytesIO
 
-from fresh import count_doc
+from old import count_doc
 from wiki_abstract import docs
 
 txt = """

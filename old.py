@@ -43,20 +43,21 @@ def fresh(loc: Locutions, sentence: str):
         print(score, ll)
 
 
-def count_wiki_datasets(ngram_size: int = 3, n_jobs: int = 0) -> Generator[Counter, None, None]:
-    datas = load_dataset("wikipedia", "20220301.en")['train']
+def count_wiki_datasets(
+    ngram_size: int = 3, n_jobs: int = 0
+) -> Generator[Counter, None, None]:
+    datas = load_dataset("wikipedia", "20220301.en")["train"]
     if n_jobs == 0:  # 0 means max
         n_jobs = n_cores - 1
     parallel = Parallel(n_jobs=n_jobs, return_as="generator")
     output_generator = parallel(
-        delayed(count_doc)(doc['text'], ngram_size) for doc in datas
+        delayed(count_doc)(doc["text"], ngram_size) for doc in datas
     )
     for c in output_generator:
         yield c
 
 
 if __name__ == "__main__":
-
     from tqdm import tqdm
 
     target = Path("./fresh.loc")
@@ -65,10 +66,6 @@ if __name__ == "__main__":
 
     loc = Locutions(target, create=True)
 
-<<<<<<< HEAD:fresh.py
-    for count in tqdm(count_wiki_abstract(sys.argv[1], ngram_size=2), unit=" docs"):
-=======
     for count in tqdm(count_wiki_datasets(ngram_size=2), unit=" docs"):
->>>>>>> 08aff58 (feat: index plain text, not a model.):old.py
         loc.add_counter(count)
     loc.write()
