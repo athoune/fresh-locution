@@ -27,10 +27,28 @@ class Db:
         self.size = 0
         self.n_docs = 0
         if exist:
-            self.size = self.f_df.lstat().st_size / 4
+            self.size = int(self.f_df.lstat().st_size / 4)
             self.tf.fromfile(self.f_tf.open("rb"), self.size)
             self.df.fromfile(self.f_df.open("rb"), self.size)
             self.n_docs = struct.unpack("I", self.f_n_docs.read_bytes())[0]
+
+    def close(self):
+        self.keys.close()
+
+    def __len__(self) -> int:
+        return self.size
+
+    def __contains__(self, key) -> bool:
+        return self.keys.get(key.encode("utf8")) is not None
+
+    def __getitem__(self, key) -> tuple[int, int]:
+        if isinstance(key, str):
+            key = key.encode("utf8")
+        v = self.keys.get(key)
+        if v is None:
+            raise KeyError(key)
+        pos = struct.unpack("I", v)[0]
+        return (self.tf[pos], self.df[pos])
 
     def add_doc(self, document: Counter) -> int:
         wb = self.keys.write_batch()
