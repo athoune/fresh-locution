@@ -63,10 +63,10 @@ if __name__ == "__main__":
 
     target = Path("./fresh.loc")
     if target.exists():
-        shutil.rmdir(target)
+        shutil.rmtree(target)
 
     loc = Db(target)
 
     for count in tqdm(count_wiki_datasets(ngram_size=2), unit=" docs"):
-        loc.add_counter(count)
+        loc.add_doc(count)
     loc.write()

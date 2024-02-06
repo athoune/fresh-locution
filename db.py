@@ -22,10 +22,13 @@ class Db:
     def __init__(self, path: str | Path) -> None:
         if isinstance(path, str):
             path = Path(path)
+        path.mkdir(exist_ok=True)
         exist = (path / "db").exists()
         self.f_tf = path / "tf"
         self.f_df = path / "df"
         self.f_n_docs = path / "docs"
+        if not exist:
+            (path / "db").mkdir()
         self.keys = plyvel.DB(str(path / "db"), create_if_missing=True)
         self.tf = array("I")
         self.df = array("I")
