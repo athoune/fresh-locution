@@ -11,7 +11,7 @@ from typing import Generator
 from datasets import load_dataset
 from joblib import Parallel, delayed
 
-from locutions import Locutions
+from db import Db
 from nlp import locutions
 
 n_cores: int
@@ -33,7 +33,7 @@ def count_doc(txt: str, ngram_size: int = 3) -> Counter:
     return Counter(" ".join(l) for l in locutions(txt, ngram_size))
 
 
-def fresh(loc: Locutions, sentence: str):
+def fresh(loc: Db, sentence: str):
     for l in locutions(sentence, 2):
         ll = " ".join(l)
         if ll not in loc:
@@ -59,12 +59,13 @@ def count_wiki_datasets(
 
 if __name__ == "__main__":
     from tqdm import tqdm
+    import shutil
 
     target = Path("./fresh.loc")
     if target.exists():
-        target.rmdir()
+        shutil.rmdir(target)
 
-    loc = Locutions(target, create=True)
+    loc = Db(target)
 
     for count in tqdm(count_wiki_datasets(ngram_size=2), unit=" docs"):
         loc.add_counter(count)
