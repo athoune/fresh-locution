@@ -8,6 +8,11 @@ import plyvel
 
 
 class Db:
+    """
+    A Db for counting tokens
+    leveldb (a key/value store) is used for storing tokens, a get them an Id.
+    Counting term frequency and document frequency are done with vectors, using token id as its position.
+    """
     keys: plyvel.DB
     tf: array("I")
     df: array("I")
