@@ -46,7 +46,7 @@ def fresh(loc: Db, sentence: str):
 def count_wiki_datasets(
     ngram_size: int = 3, n_jobs: int = 0
 ) -> Generator[Counter, None, None]:
-    datas = load_dataset("wikipedia", "20220301.en")["train"]
+    datas = load_dataset("wikipedia", "20220301.en", trust_remote_code=True)["train"]
     if n_jobs == 0:  # 0 means max
         n_jobs = n_cores - 1
     parallel = Parallel(n_jobs=n_jobs, return_as="generator")
