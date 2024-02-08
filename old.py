@@ -67,6 +67,11 @@ if __name__ == "__main__":
 
     loc = Db(target)
 
+    i = 0
     for count in tqdm(count_wiki_datasets(ngram_size=2), unit=" docs"):
         loc.add_doc(count)
+        i += 1
+        if i == 500:
+            loc.write()
+            i = 0
     loc.write()
