@@ -61,7 +61,8 @@ class OrderedTrie:
         return key in self.trie
 
     def __len__(self) -> int:
-        assert len(self.trie) == len(self.ids), "OrderedTrie storage out of sync"
+        if len(self.trie) != len(self.ids):
+            raise IOError("OrderedTrie storage out of sync")
         return len(self.trie)
 
     def __iter__(self):
