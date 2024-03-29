@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import BinaryIO, Generator
 
 import zstandard
-from lxml import etree as ET
+from defusedxml import ElementTree as ET
 
 dctx = zstandard.ZstdDecompressor()
 
