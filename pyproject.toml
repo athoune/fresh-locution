@@ -20,7 +20,13 @@ plyvel-ci = "^1.5.0"
 ruff = "^0.1.6"
 pytest = "^7.4.3"
 pytest-cov = "^4.1.0"
+bandit = "^1.7.8"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.bandit]
+exclude_dirs = [
+  "*_test.py"
+  ]
